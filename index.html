@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KumarBuildsPro - Interactive 3D Spiral Notebook</title>
+    
+    <!-- Fast Preconnect for Performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Indie+Flower&family=Inter:wght@300;400;600;700&family=Patrick+Hand&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        c1_1: '#021024', c1_2: '#052659', c1_3: '#5483B3', c1_4: '#7DA0CA', c1_5: '#C1E8FF',
+                        c2_1: '#F7CBCA', c2_2: '#DDD3D3', c2_3: '#F1F7F7', c2_4: '#D5E5E5', c2_5: '#B0D7D8', c2_6: '#5D6B6B',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        handwriting1: ['Caveat', 'cursive'],
+                        handwriting2: ['Indie Flower', 'cursive'],
+                        handwriting3: ['Patrick Hand', 'cursive'],
+                        mono: ['Roboto Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-main: #021024;
+            --header-bg: #052659;
+            --accent-blue: #5483B3;
+            --soft-blue: #7DA0CA;
+            --light-blue: #C1E8FF;
+            --cover-bg: #052659;
+            --page-bg: #F1F7F7;
+            --line-color: rgba(84, 131, 179, 0.25);
+            --text-color: #021024;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent-blue); border-radius: 4px; }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-main) 0%, #052659 50%, #021024 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* Continuous Fast Running Banner for KumarBuildsPro */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 14s linear infinite;
+            will-change: transform;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* 3D PERSPECTIVE WRAPPER */
+        .notebook-container {
+            perspective: 2200px;
+        }
+
+        .notebook-book {
+            position: relative;
+            transform-style: preserve-3d;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 0, 0, 0.6);
+            border-radius: 16px;
+        }
+
+        /* Metallic Spiral Ring Styling */
+        .spiral-ring {
+            width: 34px;
+            height: 14px;
+            background: linear-gradient(180deg, #e6e6e6 0%, #ffffff 30%, #999999 70%, #444444 100%);
+            border-radius: 7px;
+            box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+            position: relative;
+            z-index: 50;
+            margin: 12px 0;
+        }
+        .spiral-hole {
+            width: 12px; height: 12px;
+            background-color: #021024;
+            border-radius: 50%;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8);
+            position: absolute; top: 50%;
+            transform: translateY(-50%);
+        }
+        .spiral-hole.left { left: 4px; }
+        .spiral-hole.right { right: 4px; }
+
+        /* Lined & Grid Paper Patterns */
+        .ruled-lines {
+            background-image: repeating-linear-gradient(transparent, transparent 31px, var(--line-color) 31px, var(--line-color) 32px);
+            background-position: 0 8px; line-height: 32px;
+        }
+        .grid-lines {
+            background-image: linear-gradient(to right, var(--line-color) 1px, transparent 1px), linear-gradient(to bottom, var(--line-color) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .blank-lines { background-image: none; }
+        .margin-line { border-left: 2px solid rgba(247, 203, 202, 0.8); }
+
+        .notebook-textarea {
+            background: transparent; outline: none; resize: none;
+            width: 100%; height: 100%; border: none;
+            color: var(--text-color); line-height: 32px; font-size: 1.25rem; padding: 0 8px;
+        }
+
+        /* REALISTIC 3D PAGE FLIP ANIMATIONS */
+        .flipper-overlay {
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 50%;
+            background-color: var(--page-bg);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            backface-visibility: hidden;
+            z-index: 40;
+            pointer-events: none;
+        }
+
+        .flip-next-anim {
+            right: 0;
+            transform-origin: left center;
+            animation: flipPageNext 0.45s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+
+        .flip-prev-anim {
+            left: 0;
+            transform-origin: right center;
+            animation: flipPagePrev 0.45s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+
+        @keyframes flipPageNext {
+            0% { transform: rotateY(0deg); box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+            50% { box-shadow: -20px 20px 30px rgba(0,0,0,0.4); }
+            100% { transform: rotateY(-180deg); box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        }
+
+        @keyframes flipPagePrev {
+            0% { transform: rotateY(0deg); box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+            50% { box-shadow: 20px 20px 30px rgba(0,0,0,0.4); }
+            100% { transform: rotateY(180deg); box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        }
+
+        .palette-swatch { transition: all 0.15s ease; }
+        .palette-swatch:hover { transform: scale(1.15); }
+    </style>
+</head>
+<body class="flex flex-col justify-between items-center min-h-screen p-2 md:p-6 antialiased">
+
+    <!-- TOP SYSTEM STATUS / DOWNLOAD INDICATOR BAR -->
+    <div id="progressIndicator" class="fixed top-0 left-0 right-0 h-1 bg-[#7DA0CA] z-50 transition-all duration-300 opacity-0 pointer-events-none" style="width: 0%;"></div>
+
+    <!-- CONTINUOUS RUNNING BANNER (KumarBuildsPro) -->
+    <div class="w-full max-w-6xl mb-2 bg-[#021024]/80 border border-[#5483B3]/30 rounded-xl py-1.5 px-3 shadow-md flex items-center overflow-hidden">
+        <div class="marquee-container">
+            <div class="marquee-content text-xs font-mono tracking-widest text-[#C1E8FF]">
+                🚀 <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span> • Fast Storage Auto-Save • Local Storage Direct Download • 🚀 <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span> • Fast Storage Auto-Save • Local Storage Direct Download • 
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP CONTROL HEADER -->
+    <header class="w-full max-w-6xl rounded-2xl bg-[#052659]/90 backdrop-blur-md border border-[#5483B3]/30 p-4 mb-4 shadow-2xl flex flex-wrap justify-between items-center gap-4 z-40">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#021024] to-[#5483B3] flex items-center justify-center shadow-lg border border-[#7DA0CA]/40">
+                <i class="fa-solid fa-code text-[#C1E8FF] text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide text-[#C1E8FF] font-sans">KumarBuildsPro</h1>
+                <p class="text-xs text-[#7DA0CA]">Interactive Spiral Notes Edition</p>
+            </div>
+        </div>
+
+        <!-- Color Palette Selectors -->
+        <div class="flex flex-wrap items-center gap-4 bg-[#021024]/60 p-2.5 rounded-xl border border-[#5483B3]/20">
+            <div class="flex items-center space-x-1.5">
+                <span class="text-xs text-[#7DA0CA] font-medium mr-1 hidden sm:inline"><i class="fa-solid fa-palette text-[#5483B3] mr-1"></i>Ocean:</span>
+                <button title="Deep Midnight" class="palette-swatch w-6 h-6 rounded-full bg-[#021024] border border-white/20" onclick="applyTheme('#021024', '#052659', '#F1F7F7', '#021024')"></button>
+                <button title="Royal Blue" class="palette-swatch w-6 h-6 rounded-full bg-[#052659] border border-white/20" onclick="applyTheme('#052659', '#5483B3', '#F1F7F7', '#052659')"></button>
+                <button title="Steel Blue" class="palette-swatch w-6 h-6 rounded-full bg-[#5483B3] border border-white/20" onclick="applyTheme('#5483B3', '#7DA0CA', '#F1F7F7', '#021024')"></button>
+                <button title="Sky Blue" class="palette-swatch w-6 h-6 rounded-full bg-[#7DA0CA] border border-white/20" onclick="applyTheme('#7DA0CA', '#C1E8FF', '#021024', '#C1E8FF')"></button>
+                <button title="Ice Blue" class="palette-swatch w-6 h-6 rounded-full bg-[#C1E8FF] border border-white/20" onclick="applyTheme('#C1E8FF', '#5483B3', '#052659', '#052659')"></button>
+            </div>
+
+            <div class="h-5 w-[1px] bg-[#5483B3]/30 hidden sm:block"></div>
+
+            <div class="flex items-center space-x-1.5">
+                <span class="text-xs text-[#DDD3D3] font-medium mr-1 hidden sm:inline">Pastel:</span>
+                <button title="Rose Pastel" class="palette-swatch w-6 h-6 rounded-full bg-[#F7CBCA] border border-white/20" onclick="applyTheme('#F7CBCA', '#5D6B6B', '#F1F7F7', '#5D6B6B')"></button>
+                <button title="Soft Taupe" class="palette-swatch w-6 h-6 rounded-full bg-[#DDD3D3] border border-white/20" onclick="applyTheme('#DDD3D3', '#5D6B6B', '#F1F7F7', '#222222')"></button>
+                <button title="Mist White" class="palette-swatch w-6 h-6 rounded-full bg-[#F1F7F7] border border-white/20" onclick="applyTheme('#F1F7F7', '#B0D7D8', '#021024', '#5D6B6B')"></button>
+                <button title="Soft Mint" class="palette-swatch w-6 h-6 rounded-full bg-[#D5E5E5] border border-white/20" onclick="applyTheme('#D5E5E5', '#5D6B6B', '#F1F7F7', '#021024')"></button>
+                <button title="Aqua Soft" class="palette-swatch w-6 h-6 rounded-full bg-[#B0D7D8] border border-white/20" onclick="applyTheme('#B0D7D8', '#5D6B6B', '#F1F7F7', '#021024')"></button>
+                <button title="Slate Charcoal" class="palette-swatch w-6 h-6 rounded-full bg-[#5D6B6B] border border-white/20" onclick="applyTheme('#5D6B6B', '#B0D7D8', '#F1F7F7', '#FFFFFF')"></button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <select id="lineStyleSelect" onchange="changeLineStyle(this.value)" class="bg-[#021024] text-[#C1E8FF] border border-[#5483B3]/40 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none">
+                <option value="ruled-lines">Ruled Lines</option>
+                <option value="grid-lines">Grid Pattern</option>
+                <option value="blank-lines">Blank Page</option>
+            </select>
+
+            <select id="fontSelect" onchange="changeFont(this.value)" class="bg-[#021024] text-[#C1E8FF] border border-[#5483B3]/40 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none">
+                <option value="font-handwriting1">Caveat (Handwriting)</option>
+                <option value="font-handwriting2">Indie Flower</option>
+                <option value="font-handwriting3">Patrick Hand</option>
+                <option value="font-sans">Inter (Sans)</option>
+                <option value="font-mono">Monospace</option>
+            </select>
+
+            <button onclick="saveNotebook(true)" class="bg-[#5483B3] hover:bg-[#7DA0CA] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span class="hidden sm:inline">Save</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN NOTEBOOK AREA -->
+    <main class="w-full max-w-5xl flex-1 flex flex-col justify-center items-center relative my-auto py-2">
+
+        <button onclick="prevPage()" class="hidden md:flex absolute -left-12 lg:-left-16 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#052659]/80 border border-[#7DA0CA]/50 text-[#C1E8FF] items-center justify-center hover:bg-[#5483B3] hover:scale-110 transition shadow-2xl z-50 focus:outline-none">
+            <i class="fa-solid fa-chevron-left text-lg"></i>
+        </button>
+
+        <button onclick="nextPage()" class="hidden md:flex absolute -right-12 lg:-right-16 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#052659]/80 border border-[#7DA0CA]/50 text-[#C1E8FF] items-center justify-center hover:bg-[#5483B3] hover:scale-110 transition shadow-2xl z-50 focus:outline-none">
+            <i class="fa-solid fa-chevron-right text-lg"></i>
+        </button>
+
+        <div id="notebook" class="notebook-container w-full max-w-4xl px-2 sm:px-4">
+            <div id="notebookBook" class="notebook-book w-full min-h-[550px] sm:min-h-[620px] flex flex-col md:flex-row relative overflow-hidden transition-all duration-300" style="background-color: var(--cover-bg); border: 8px solid var(--cover-bg);">
+
+                <!-- Dynamic Animated Turning Page Sheet Overlay -->
+                <div id="flipperOverlay" class="flipper-overlay hidden"></div>
+
+                <!-- CENTRAL METALLIC SPIRAL BINDER -->
+                <div class="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 z-50 hidden md:flex flex-col justify-around py-4 pointer-events-none">
+                    <div id="spiralSpine" class="flex flex-col justify-between h-full"></div>
+                </div>
+
+                <!-- LEFT PAGE -->
+                <div id="leftPage" class="flex-1 relative p-4 sm:p-6 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-black/10 shadow-inner overflow-hidden" style="background-color: var(--page-bg);">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-black/10 text-xs font-semibold text-gray-500">
+                        <span class="flex items-center gap-1.5"><i class="fa-regular fa-calendar-check text-[#5483B3]"></i> Date: <span id="leftDateDisplay"></span></span>
+                        <span id="leftPageNum" class="bg-[#5483B3]/10 text-[#5483B3] px-2.5 py-0.5 rounded-full font-mono">Page 1</span>
+                    </div>
+
+                    <!-- Watermark Inside Page -->
+                    <div class="absolute right-4 bottom-12 text-3xl font-bold opacity-5 pointer-events-none font-mono text-[#052659]">
+                        KumarBuildsPro
+                    </div>
+
+                    <div class="flex-1 relative ruled-lines margin-line pl-4" id="leftPaper">
+                        <textarea id="leftTextarea" class="notebook-textarea font-handwriting1" placeholder="Type your notes here..." oninput="autoSave()"></textarea>
+                    </div>
+
+                    <div class="mt-2 pt-2 border-t border-black/5 flex justify-between items-center text-xs text-gray-400">
+                        <button onclick="clearCurrentPage('left')" class="hover:text-red-500 transition flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Clear
+                        </button>
+                        <span id="leftCharCount" class="font-mono text-[10px] opacity-70">0 chars</span>
+                    </div>
+                </div>
+
+                <!-- RIGHT PAGE -->
+                <div id="rightPage" class="flex-1 relative p-4 sm:p-6 md:p-8 flex flex-col shadow-inner overflow-hidden" style="background-color: var(--page-bg);">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-black/10 text-xs font-semibold text-gray-500">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-bookmark text-[#5483B3]"></i> Subject: <input type="text" id="rightSubject" placeholder="Topic..." oninput="autoSave()" class="bg-transparent border-b border-gray-300 focus:outline-none text-xs font-bold text-gray-700 w-24 sm:w-32"></span>
+                        <span id="rightPageNum" class="bg-[#5483B3]/10 text-[#5483B3] px-2.5 py-0.5 rounded-full font-mono">Page 2</span>
+                    </div>
+
+                    <!-- Watermark Inside Page -->
+                    <div class="absolute right-4 bottom-12 text-3xl font-bold opacity-5 pointer-events-none font-mono text-[#052659]">
+                        KumarBuildsPro
+                    </div>
+
+                    <div class="flex-1 relative ruled-lines margin-line pl-4" id="rightPaper">
+                        <textarea id="rightTextarea" class="notebook-textarea font-handwriting1" placeholder="Continue writing on page 2..." oninput="autoSave()"></textarea>
+                    </div>
+
+                    <div class="mt-2 pt-2 border-t border-black/5 flex justify-between items-center text-xs text-gray-400">
+                        <button onclick="clearCurrentPage('right')" class="hover:text-red-500 transition flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Clear
+                        </button>
+                        <span id="rightCharCount" class="font-mono text-[10px] opacity-70">0 chars</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MOBILE CONTROLS -->
+        <div class="w-full max-w-md flex justify-between items-center mt-6 px-4 py-2 bg-[#052659]/90 border border-[#5483B3]/30 rounded-2xl backdrop-blur-md shadow-xl">
+            <button onclick="prevPage()" class="flex items-center space-x-2 bg-[#021024] hover:bg-[#5483B3] text-[#C1E8FF] px-4 py-2 rounded-xl text-sm font-medium transition active:scale-95 border border-[#5483B3]/30">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Previous</span>
+            </button>
+
+            <div class="text-center font-mono text-sm text-[#C1E8FF]">
+                <span id="pageIndicator">Pages 1-2</span>
+            </div>
+
+            <button onclick="nextPage()" class="flex items-center space-x-2 bg-[#021024] hover:bg-[#5483B3] text-[#C1E8FF] px-4 py-2 rounded-xl text-sm font-medium transition active:scale-95 border border-[#5483B3]/30">
+                <span>Next</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- FOOTER WITH KUMARBUILDSPRO CREDITS -->
+    <footer class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center text-xs text-[#7DA0CA] pt-3 pb-2 border-t border-[#5483B3]/20 px-4 gap-3 mt-4">
+        <div class="flex items-center gap-3">
+            <span><i class="fa-regular fa-keyboard text-[#5483B3] mr-1"></i> Use <b>← / →</b> arrow keys to flip pages</span>
+            <span class="hidden sm:inline">• Touch / Swipe Gesture Enabled</span>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <button onclick="addNewSpread()" class="hover:text-[#C1E8FF] transition flex items-center gap-1 bg-[#052659] px-2.5 py-1 rounded-md border border-[#5483B3]/30">
+                <i class="fa-solid fa-plus text-xs"></i> Add Pages
+            </button>
+
+            <!-- FAST RELIABLE EXPORT TXT BUTTON -->
+            <button id="downloadBtn" onclick="exportNotes()" class="hover:text-[#C1E8FF] transition flex items-center gap-1 bg-[#5483B3] text-white px-3 py-1 rounded-md border border-[#7DA0CA]/50 font-semibold shadow">
+                <i class="fa-solid fa-file-arrow-down text-xs"></i> Export TXT
+            </button>
+        </div>
+
+        <div class="text-center md:text-right text-[11px] font-mono text-[#C1E8FF]/80">
+            Designed & Developed by <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span>
+        </div>
+    </footer>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-[#052659] text-[#C1E8FF] border border-[#7DA0CA]/40 px-4 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2 opacity-0 pointer-events-none z-50 transition-all duration-300">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-[#7DA0CA]"></i>
+        <span id="toastMsg" class="text-xs font-medium">Notebook saved!</span>
+    </div>
+
+    <script>
+        let currentSpread = 0;
+        let pagesData = {};
+        let totalPages = 10;
+        let isFlipping = false;
+
+        const leftTextarea = document.getElementById('leftTextarea');
+        const rightTextarea = document.getElementById('rightTextarea');
+        const leftPageNum = document.getElementById('leftPageNum');
+        const rightPageNum = document.getElementById('rightPageNum');
+        const pageIndicator = document.getElementById('pageIndicator');
+        const leftDateDisplay = document.getElementById('leftDateDisplay');
+        const rightSubject = document.getElementById('rightSubject');
+        const leftPaper = document.getElementById('leftPaper');
+        const rightPaper = document.getElementById('rightPaper');
+        const flipperOverlay = document.getElementById('flipperOverlay');
+        const progressIndicator = document.getElementById('progressIndicator');
+
+        function renderSpine() {
+            const spiralSpine = document.getElementById('spiralSpine');
+            spiralSpine.innerHTML = '';
+            for (let i = 0; i < 12; i++) {
+                const ring = document.createElement('div');
+                ring.className = 'spiral-ring';
+                ring.innerHTML = `<div class="spiral-hole left"></div><div class="spiral-hole right"></div>`;
+                spiralSpine.appendChild(ring);
+            }
+        }
+
+        window.onload = () => {
+            renderSpine();
+            loadNotebookData();
+            updatePageDisplay();
+            setupTouchGestures();
+            const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+            leftDateDisplay.innerText = new Date().toLocaleDateString('en-US', options);
+        };
+
+        function loadNotebookData() {
+            const savedData = localStorage.getItem('spiral_notebook_data');
+            if (savedData) {
+                try { pagesData = JSON.parse(savedData); } catch (e) { pagesData = {}; }
+            }
+            const savedTheme = localStorage.getItem('spiral_notebook_theme');
+            if (savedTheme) {
+                const t = JSON.parse(savedTheme);
+                applyTheme(t.cover, t.accent, t.page, t.text, false);
+            }
+        }
+
+        let saveTimeout;
+        function autoSave() {
+            const leftIndex = currentSpread * 2 + 1;
+            const rightIndex = currentSpread * 2 + 2;
+
+            pagesData[leftIndex] = leftTextarea.value;
+            pagesData[rightIndex] = { text: rightTextarea.value, subject: rightSubject.value };
+
+            document.getElementById('leftCharCount').innerText = `${leftTextarea.value.length} chars`;
+            document.getElementById('rightCharCount').innerText = `${rightTextarea.value.length} chars`;
+
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => { saveNotebook(false); }, 300);
+        }
+
+        function saveNotebook(showToastAlert = true) {
+            localStorage.setItem('spiral_notebook_data', JSON.stringify(pagesData));
+            if (showToastAlert) showToast('Notebook saved successfully!');
+        }
+
+        function updatePageDisplay() {
+            const leftIndex = currentSpread * 2 + 1;
+            const rightIndex = currentSpread * 2 + 2;
+
+            leftPageNum.innerText = `Page ${leftIndex}`;
+            rightPageNum.innerText = `Page ${rightIndex}`;
+            pageIndicator.innerText = `Pages ${leftIndex} - ${rightIndex}`;
+
+            leftTextarea.value = pagesData[leftIndex] || '';
+            
+            const rightData = pagesData[rightIndex];
+            if (typeof rightData === 'object' && rightData !== null) {
+                rightTextarea.value = rightData.text || '';
+                rightSubject.value = rightData.subject || '';
+            } else {
+                rightTextarea.value = rightData || '';
+                rightSubject.value = '';
+            }
+
+            document.getElementById('leftCharCount').innerText = `${leftTextarea.value.length} chars`;
+            document.getElementById('rightCharCount').innerText = `${rightTextarea.value.length} chars`;
+        }
+
+        /* 3D REAL FLIPPING ANIMATION */
+        function nextPage() {
+            if (isFlipping) return;
+            if ((currentSpread + 1) * 2 >= totalPages) totalPages += 2;
+
+            isFlipping = true;
+            flipperOverlay.className = "flipper-overlay flip-next-anim";
+            
+            setTimeout(() => {
+                currentSpread++;
+                updatePageDisplay();
+            }, 220);
+
+            setTimeout(() => {
+                flipperOverlay.className = "flipper-overlay hidden";
+                isFlipping = false;
+            }, 450);
+        }
+
+        function prevPage() {
+            if (isFlipping) return;
+            if (currentSpread > 0) {
+                isFlipping = true;
+                flipperOverlay.className = "flipper-overlay flip-prev-anim";
+
+                setTimeout(() => {
+                    currentSpread--;
+                    updatePageDisplay();
+                }, 220);
+
+                setTimeout(() => {
+                    flipperOverlay.className = "flipper-overlay hidden";
+                    isFlipping = false;
+                }, 450);
+            } else {
+                showToast('You are on the first page!');
+            }
+        }
+
+        function addNewSpread() {
+            totalPages += 2;
+            showToast(`Added 2 new pages. Total: ${totalPages}`);
+            nextPage();
+        }
+
+        function clearCurrentPage(side) {
+            if (side === 'left') leftTextarea.value = '';
+            else { rightTextarea.value = ''; rightSubject.value = ''; }
+            autoSave();
+            showToast('Page content cleared');
+        }
+
+        function applyTheme(coverBg, accentColor, pageBg, textColor, save = true) {
+            document.documentElement.style.setProperty('--cover-bg', coverBg);
+            document.documentElement.style.setProperty('--accent-blue', accentColor);
+            document.documentElement.style.setProperty('--page-bg', pageBg);
+            document.documentElement.style.setProperty('--text-color', textColor);
+
+            if (save) {
+                localStorage.setItem('spiral_notebook_theme', JSON.stringify({ cover: coverBg, accent: accentColor, page: pageBg, text: textColor }));
+                showToast('Theme updated!');
+            }
+        }
+
+        function changeLineStyle(styleClass) {
+            leftPaper.className = `flex-1 relative margin-line pl-4 ${styleClass}`;
+            rightPaper.className = `flex-1 relative margin-line pl-4 ${styleClass}`;
+        }
+
+        function changeFont(fontClass) {
+            leftTextarea.className = `notebook-textarea ${fontClass}`;
+            rightTextarea.className = `notebook-textarea ${fontClass}`;
+        }
+
+        /* RELIABLE DIRECT FILE DOWNLOAD HANDLER FOR MOBILE & DESKTOP */
+        function exportNotes() {
+            autoSave();
+
+            // Screen progress indicator bar animation
+            progressIndicator.style.opacity = "1";
+            progressIndicator.style.width = "40%";
+
+            let content = "=== KUMARBUILDSPRO DIGITAL SPIRAL NOTEBOOK EXPORT ===\n";
+            content += "Export Date: " + new Date().toLocaleString() + "\n";
+            content += "====================================================\n\n";
+            
+            let hasNotes = false;
+            const leftIndex = currentSpread * 2 + 1;
+            const rightIndex = currentSpread * 2 + 2;
+
+            pagesData[leftIndex] = leftTextarea.value;
+            pagesData[rightIndex] = { text: rightTextarea.value, subject: rightSubject.value };
+
+            const keys = Object.keys(pagesData).sort((a,b) => Number(a) - Number(b));
+
+            keys.forEach(page => {
+                const pageVal = pagesData[page];
+                let textContent = "";
+                let subjectContent = "";
+
+                if (typeof pageVal === 'object' && pageVal !== null) {
+                    textContent = pageVal.text || '';
+                    subjectContent = pageVal.subject || '';
+                } else if (typeof pageVal === 'string') {
+                    textContent = pageVal;
+                }
+
+                if (textContent.trim() !== "" || subjectContent.trim() !== "") {
+                    hasNotes = true;
+                    content += `----------------------------------------\n`;
+                    content += `PAGE ${page}\n`;
+                    if (subjectContent) content += `Subject: ${subjectContent}\n`;
+                    content += `----------------------------------------\n`;
+                    content += `${textContent}\n\n`;
+                }
+            });
+
+            if (!hasNotes) {
+                progressIndicator.style.opacity = "0";
+                progressIndicator.style.width = "0%";
+                showToast("Notebook empty hai! Pehle kuch likhein.", "fa-triangle-exclamation");
+                return;
+            }
+
+            progressIndicator.style.width = "80%";
+
+            setTimeout(() => {
+                try {
+                    // Optimized Data URI trigger for universal mobile storage support
+                    const fileName = `KumarBuildsPro_Notes_${new Date().toISOString().slice(0,10)}.txt`;
+                    
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    
+                    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+                        window.navigator.msSaveOrOpenBlob(blob, fileName);
+                    } else {
+                        const link = document.createElement('a');
+                        const url = URL.createObjectURL(blob);
+                        link.href = url;
+                        link.setAttribute('download', fileName);
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        setTimeout(() => {
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                        }, 200);
+                    }
+
+                    progressIndicator.style.width = "100%";
+                    setTimeout(() => {
+                        progressIndicator.style.opacity = "0";
+                        progressIndicator.style.width = "0%";
+                    }, 400);
+
+                    showToast('File aapke Downloads folder me save ho gayi!', 'fa-circle-check');
+                } catch (err) {
+                    progressIndicator.style.opacity = "0";
+                    progressIndicator.style.width = "0%";
+                    showToast('Download error! Browser download permission check karein.', 'fa-triangle-exclamation');
+                }
+            }, 250);
+        }
+
+        function showToast(message, iconClass = "fa-circle-check") {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            toastIcon.className = `fa-solid ${iconClass} text-[#7DA0CA]`;
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2800);
+        }
+
+        function setupTouchGestures() {
+            let touchStartX = 0;
+            const notebook = document.getElementById('notebook');
+            notebook.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+            notebook.addEventListener('touchend', (e) => {
+                const touchEndX = e.changedTouches[0].screenX;
+                if (touchEndX < touchStartX - 50) nextPage();
+                if (touchEndX > touchStartX + 50) prevPage();
+            }, { passive: true });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+                if (e.key === 'ArrowRight') nextPage();
+                else if (e.key === 'ArrowLeft') prevPage();
+            }
+        });
+    </script>
+</body>
+</html>
