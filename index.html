@@ -181,7 +181,7 @@
     <div class="w-full max-w-6xl mb-2 bg-[#021024]/80 border border-[#5483B3]/30 rounded-xl py-1.5 px-3 shadow-md flex items-center overflow-hidden">
         <div class="marquee-container">
             <div class="marquee-content text-xs font-mono tracking-widest text-[#C1E8FF]">
-                🚀 <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span> • Fast Storage Auto-Save • Local Storage Direct Download • 🚀 <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span> • Fast Storage Auto-Save • Local Storage Direct Download • 
+                🚀 <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span> • Fast Storage Auto-Save • Local Storage Direct Download • Persistent Font & Page Memory • 🚀 <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span> • Fast Storage Auto-Save • Local Storage Direct Download • Persistent Font & Page Memory • 
             </div>
         </div>
     </div>
@@ -193,7 +193,7 @@
                 <i class="fa-solid fa-code text-[#C1E8FF] text-xl"></i>
             </div>
             <div>
-                <h1 class="text-xl font-bold tracking-wide text-[#C1E8FF] font-sans">KumarBuildsPro</h1>
+                <h1 class="text-xl font-bold tracking-wide text-[#C1E8FF] font-sans">KumarBuildsPro...</h1>
                 <p class="text-xs text-[#7DA0CA]">Interactive Spiral Notes Edition</p>
             </div>
         </div>
@@ -354,7 +354,7 @@
         </div>
 
         <div class="text-center md:text-right text-[11px] font-mono text-[#C1E8FF]/80">
-            Designed & Developed by <span class="font-bold text-[#7DA0CA]">KumarBuildsPro</span>
+            Designed & Developed by <span class="font-bold text-[#7DA0CA]">KumarBuildsPro...</span>
         </div>
     </footer>
 
@@ -381,6 +381,8 @@
         const rightPaper = document.getElementById('rightPaper');
         const flipperOverlay = document.getElementById('flipperOverlay');
         const progressIndicator = document.getElementById('progressIndicator');
+        const fontSelect = document.getElementById('fontSelect');
+        const lineStyleSelect = document.getElementById('lineStyleSelect');
 
         function renderSpine() {
             const spiralSpine = document.getElementById('spiralSpine');
@@ -403,14 +405,43 @@
         };
 
         function loadNotebookData() {
+            // Load saved pages content
             const savedData = localStorage.getItem('spiral_notebook_data');
             if (savedData) {
                 try { pagesData = JSON.parse(savedData); } catch (e) { pagesData = {}; }
             }
+
+            // Load saved theme
             const savedTheme = localStorage.getItem('spiral_notebook_theme');
             if (savedTheme) {
                 const t = JSON.parse(savedTheme);
                 applyTheme(t.cover, t.accent, t.page, t.text, false);
+            }
+
+            // Load saved font selection
+            const savedFont = localStorage.getItem('spiral_notebook_font');
+            if (savedFont) {
+                fontSelect.value = savedFont;
+                changeFont(savedFont, false);
+            }
+
+            // Load saved line style selection
+            const savedLineStyle = localStorage.getItem('spiral_notebook_line_style');
+            if (savedLineStyle) {
+                lineStyleSelect.value = savedLineStyle;
+                changeLineStyle(savedLineStyle, false);
+            }
+
+            // Load saved current page spread position
+            const savedSpread = localStorage.getItem('spiral_notebook_current_spread');
+            if (savedSpread !== null) {
+                const parsedSpread = parseInt(savedSpread, 10);
+                if (!isNaN(parsedSpread)) {
+                    currentSpread = parsedSpread;
+                    if ((currentSpread + 1) * 2 > totalPages) {
+                        totalPages = (currentSpread + 1) * 2;
+                    }
+                }
             }
         }
 
@@ -431,6 +462,7 @@
 
         function saveNotebook(showToastAlert = true) {
             localStorage.setItem('spiral_notebook_data', JSON.stringify(pagesData));
+            localStorage.setItem('spiral_notebook_current_spread', currentSpread.toString());
             if (showToastAlert) showToast('Notebook saved successfully!');
         }
 
@@ -455,6 +487,9 @@
 
             document.getElementById('leftCharCount').innerText = `${leftTextarea.value.length} chars`;
             document.getElementById('rightCharCount').innerText = `${rightTextarea.value.length} chars`;
+
+            // Save active page location on page change
+            localStorage.setItem('spiral_notebook_current_spread', currentSpread.toString());
         }
 
         /* 3D REAL FLIPPING ANIMATION */
@@ -521,21 +556,26 @@
             }
         }
 
-        function changeLineStyle(styleClass) {
+        function changeLineStyle(styleClass, save = true) {
             leftPaper.className = `flex-1 relative margin-line pl-4 ${styleClass}`;
             rightPaper.className = `flex-1 relative margin-line pl-4 ${styleClass}`;
+            if (save) {
+                localStorage.setItem('spiral_notebook_line_style', styleClass);
+            }
         }
 
-        function changeFont(fontClass) {
+        function changeFont(fontClass, save = true) {
             leftTextarea.className = `notebook-textarea ${fontClass}`;
             rightTextarea.className = `notebook-textarea ${fontClass}`;
+            if (save) {
+                localStorage.setItem('spiral_notebook_font', fontClass);
+            }
         }
 
         /* RELIABLE DIRECT FILE DOWNLOAD HANDLER FOR MOBILE & DESKTOP */
         function exportNotes() {
             autoSave();
 
-            // Screen progress indicator bar animation
             progressIndicator.style.opacity = "1";
             progressIndicator.style.width = "40%";
 
@@ -585,7 +625,6 @@
 
             setTimeout(() => {
                 try {
-                    // Optimized Data URI trigger for universal mobile storage support
                     const fileName = `KumarBuildsPro_Notes_${new Date().toISOString().slice(0,10)}.txt`;
                     
                     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
