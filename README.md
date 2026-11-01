@@ -18,7 +18,7 @@ A modern, fast, and fully responsive Digital Spiral Notebook Web Application bui
 
 Explore the live project here:
 
-👉 "Open Live Notebook" (YOUR-GITHUB-PAGES-LINK)
+👉 "Open Live Notebook" https://kumarbuildspro.github.io/kbp-digital-notebook/
 
 🛠️ Tech Stack
 
